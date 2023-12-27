@@ -6,7 +6,24 @@ import { createInterface } from "readline";
 import { schedule } from "node-cron";
 import cfonts from "cfonts";
 import chalk from "chalk";
-import { error, info } from "./logger.js";
+import { error, info, warn } from "./logger.js";
+import { Gpio } from "onoff";
+import { parseConfig } from "./configuration-parser.js";
+import isPi from "detect-rpi";
+
+const config = parseConfig();
+
+let button: Gpio | undefined;
+let alarmRelay: Gpio | undefined;
+
+if (isPi()) {
+  button = new Gpio(config.button_pin, "in");
+  alarmRelay = new Gpio(config.alarm_relay_pin, "out");
+} else {
+  warn(
+    "This program is not running on a raspberry pi, orders will still be tracked, but no alarm will be sound"
+  );
+}
 
 cfonts.say("AOS NOTIFIER", {
   font: "block",
@@ -89,6 +106,7 @@ async function getNewToken(oAuth2Client: OAuth2Client) {
       chalk.green("Ender the URL you were redirected to here: "),
       (url) => {
         rl.close();
+
         const parsedUrl = new URL(url);
         const code = parsedUrl.searchParams.get("code");
 
@@ -137,6 +155,29 @@ async function getMostRecentMessage(auth: OAuth2Client) {
 
 function onNewOrder() {
   info("A new order has been found, triggering alarm");
+
+  if (isPi()) {
+    // Parse the config again here so that we can edit the interval variables without restarting the program
+    const newConfig = parseConfig();
+
+    const interval = setInterval(() => {
+      alarmRelay?.writeSync(1);
+
+      setTimeout(() => {
+        alarmRelay?.writeSync(0);
+      }, newConfig.alarm_on_duration);
+    }, newConfig.alarm_interval + newConfig.alarm_on_duration);
+
+    button?.watch(() => {
+      clearInterval(interval);
+    });
+  }
 }
+
+// Cleanup function when the program shuts down
+process.on("SIGTERM", () => {
+  button?.unexport();
+  alarmRelay?.unexport();
+});
 
 main();
