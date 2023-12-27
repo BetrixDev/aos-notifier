@@ -1,14 +1,24 @@
-import { parseCredentials } from "./credentials-parser";
+import { parseCredentials } from "./credentials-parser.js";
 import { google } from "googleapis";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { OAuth2Client } from "google-auth-library";
 import { createInterface } from "readline";
 import { schedule } from "node-cron";
+import cfonts from "cfonts";
+import chalk from "chalk";
+import { error, info } from "./logger.js";
+
+cfonts.say("AOS NOTIFIER", {
+  font: "block",
+  colors: ["red", "black"],
+});
 
 let lastOrderMessageId: string | undefined;
 
 async function main() {
   const auth = await authorize();
+
+  info("Watching for new orders...");
 
   schedule("* * * * *", async () => {
     const message = await getMostRecentMessage(auth);
@@ -28,6 +38,8 @@ async function main() {
 }
 
 async function authorize() {
+  info("Connecting to google authentication servers");
+
   const { client_secret, client_id, redirect_uris } =
     parseCredentials().installed;
 
@@ -38,6 +50,8 @@ async function authorize() {
   );
 
   if (existsSync("token.json")) {
+    info("Found existing login session... using that");
+
     const token = readFileSync("token.json");
 
     oAuth2Client.setCredentials(JSON.parse(token.toString()));
@@ -51,12 +65,19 @@ async function authorize() {
 }
 
 async function getNewToken(oAuth2Client: OAuth2Client) {
+  info("No existing login session found...");
+
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: "offline",
     scope: ["https://www.googleapis.com/auth/gmail.readonly"],
   });
 
-  console.log("Authorize this app by visiting this url:", authUrl);
+  console.log(
+    "\n",
+    chalk.green("Authorize this app by visiting this url:"),
+    chalk.blue(authUrl),
+    "\n"
+  );
 
   const rl = createInterface({
     input: process.stdin,
@@ -64,19 +85,32 @@ async function getNewToken(oAuth2Client: OAuth2Client) {
   });
 
   return new Promise((resolve) => {
-    rl.question("Enter the token from that page here: ", (code) => {
-      rl.close();
+    rl.question(
+      chalk.green("Ender the URL you were redirected to here: "),
+      (url) => {
+        rl.close();
+        const parsedUrl = new URL(url);
+        const code = parsedUrl.searchParams.get("code");
 
-      oAuth2Client.getToken(code, (err, token) => {
-        if (err) return console.error("There was an error parsing that token");
+        if (!code) {
+          return error(
+            "No code was present in that URL. Please run the program again to try again"
+          );
+        }
 
-        oAuth2Client.setCredentials(token!);
+        oAuth2Client.getToken(code, (err, token) => {
+          if (err) return error("There was an error parsing that token");
 
-        writeFileSync("token.json", JSON.stringify(token));
+          oAuth2Client.setCredentials(token!);
 
-        resolve(oAuth2Client);
-      });
-    });
+          writeFileSync("token.json", JSON.stringify(token));
+
+          info("Successfully authenticated with google servers");
+
+          resolve(oAuth2Client);
+        });
+      }
+    );
   });
 }
 
@@ -101,6 +135,8 @@ async function getMostRecentMessage(auth: OAuth2Client) {
   return recentMessageData;
 }
 
-function onNewOrder() {}
+function onNewOrder() {
+  info("A new order has been found, triggering alarm");
+}
 
 main();
