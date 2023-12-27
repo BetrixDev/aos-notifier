@@ -16,6 +16,11 @@ const config = parseConfig();
 let button: Gpio | undefined;
 let alarmRelay: Gpio | undefined;
 
+cfonts.say("AOS NOTIFIER", {
+  font: "block",
+  colors: ["red", "black"],
+});
+
 if (isPi()) {
   button = new Gpio(config.button_pin, "in");
   alarmRelay = new Gpio(config.alarm_relay_pin, "out");
@@ -24,11 +29,6 @@ if (isPi()) {
     "This program is not running on a raspberry pi, orders will still be tracked, but no alarm will be sound"
   );
 }
-
-cfonts.say("AOS NOTIFIER", {
-  font: "block",
-  colors: ["red", "black"],
-});
 
 let lastOrderMessageId: string | undefined;
 
