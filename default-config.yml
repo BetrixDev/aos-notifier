@@ -1,5 +1,5 @@
-# How often the program checks for new emails (in milliseconds)
-order_check_interval: 1000
+# How often the program checks for new emails (in minutes)
+order_check_interval: 1
 
 # How often the alarm is sounded for when a new order happens (in milliseconds)
 alarm_interval: 2000

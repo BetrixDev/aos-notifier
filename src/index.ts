@@ -37,7 +37,7 @@ async function main() {
 
   info("Watching for new orders...");
 
-  schedule("* * * * *", async () => {
+  schedule(`*/${config.order_check_interval} * * * *`, async () => {
     const message = await getMostRecentMessage(auth);
 
     if (message.data.snippet?.startsWith("Order Assigned")) {
