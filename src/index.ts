@@ -3,15 +3,19 @@ import { google } from "googleapis";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { OAuth2Client } from "google-auth-library";
 import { createInterface } from "readline";
-import { schedule } from "node-cron";
+import { ScheduledTask, schedule } from "node-cron";
 import cfonts from "cfonts";
 import chalk from "chalk";
 import { error, info, warn } from "./logger.js";
 import { Gpio } from "onoff";
 import { parseConfig } from "./configuration-parser.js";
 import isPi from "detect-rpi";
+import { shouldAlarmSound } from "./utils.js";
+import chokidar from "chokidar";
 
-const config = parseConfig();
+let cronJob: ScheduledTask | undefined;
+
+let config = parseConfig();
 
 let button: Gpio | undefined;
 let alarmRelay: Gpio | undefined;
@@ -35,9 +39,39 @@ let lastOrderMessageId: string | undefined;
 async function main() {
   const auth = await authorize();
 
-  info("Watching for new orders...");
+  spawnNewCronJob(auth);
 
-  schedule(`*/${config.order_check_interval} * * * *`, async () => {
+  chokidar.watch("config.yml").on("change", () => {
+    info("Detected config change, updated values");
+    let shouldUpdateCron = false;
+
+    const newConfig = parseConfig();
+
+    if (config.order_check_interval !== newConfig.order_check_interval) {
+      // Order check interval has changed, update the cron job
+      shouldUpdateCron = true;
+    }
+
+    config = newConfig;
+
+    if (shouldUpdateCron) {
+      spawnNewCronJob(auth);
+    }
+  });
+}
+
+function spawnNewCronJob(auth: OAuth2Client) {
+  cronJob?.stop();
+
+  const checkInterval = config.order_check_interval;
+
+  info(
+    `Checking for new orders every ${
+      checkInterval > 1 ? checkInterval : ""
+    }minute${checkInterval > 1 ? "s" : ""}...`
+  );
+
+  cronJob = schedule(`*/${checkInterval} * * * *`, async () => {
     const message = await getMostRecentMessage(auth);
 
     if (message.data.snippet?.startsWith("Order Assigned")) {
@@ -154,19 +188,23 @@ async function getMostRecentMessage(auth: OAuth2Client) {
 }
 
 function onNewOrder() {
-  info("A new order has been found, triggering alarm");
+  if (!shouldAlarmSound()) {
+    info(
+      "A new order has been found, but it is not during the hours of operation for the store"
+    );
+    return;
+  } else {
+    info("A new order has been found, triggering alarm");
+  }
 
   if (isPi()) {
-    // Parse the config again here so that we can edit the interval variables without restarting the program
-    const newConfig = parseConfig();
-
     const interval = setInterval(() => {
       alarmRelay?.writeSync(1);
 
       setTimeout(() => {
         alarmRelay?.writeSync(0);
-      }, newConfig.alarm_on_duration);
-    }, newConfig.alarm_interval + newConfig.alarm_on_duration);
+      }, config.alarm_on_duration);
+    }, config.alarm_interval + config.alarm_on_duration);
 
     button?.watch(() => {
       clearInterval(interval);

@@ -4,12 +4,23 @@ import yaml from "yaml";
 import { warn, info } from "./logger.js";
 
 export const schema = z.object({
-  order_check_interval: z.number(),
-  alarm_interval: z.number(),
+  order_check_interval: z.number().min(1),
+  alarm_interval: z.number().min(1),
+  alarm_on_duration: z.number().min(1),
   button_pin: z.number(),
   alarm_relay_pin: z.number(),
-  alarm_on_duration: z.number(),
+  hours_of_operation: z.object({
+    sunday: z.string(),
+    monday: z.string(),
+    tuesday: z.string(),
+    wednesday: z.string(),
+    thursday: z.string(),
+    friday: z.string(),
+    saturday: z.string(),
+  }),
 });
+
+export type DayOfWeek = keyof z.infer<typeof schema>["hours_of_operation"];
 
 export function parseConfig() {
   if (!existsSync("config.yml")) {

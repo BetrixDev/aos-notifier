@@ -7,8 +7,19 @@ alarm_interval: 2000
 # How long the alarm is activated for (in milliseconds)
 alarm_on_duration: 1000
 
-# The pin that the button to turn off the alarm is connected to on the pi
+# The pin that the button to turn off the alarm is connected to on the pi (NOT THE GROUND PIN)
 button_pin: 4
 
-# The pin that the alarm relay is connected to on the pi
+# The pin that the alarm relay is connected to on the pi (NOT THE GROUND PIN)
 alarm_relay_pin: 17
+
+# Normal hours of operation for when the alarm should actually sound (prevent the alarm sounding when the store is not open)
+# Each day must be in the format (<OPEN_TIME><pm/am>-<CLOSE_TIME><pm/am>) ie. 8:00am-8:00pm
+hours_of_operation:
+  sunday: "8:00am-8:00pm"
+  monday: "8:00am-8:00pm"
+  tuesday: "8:00am-8:00pm"
+  wednesday: "8:00am-8:00pm"
+  thursday: "8:00am-8:00pm"
+  friday: "8:00am-8:00pm"
+  saturday: "8:00am-8:00pm"
