@@ -205,7 +205,16 @@ function onNewOrder() {
   }
 
   if (isPi()) {
+    // Stop the alarm before the next interval check occurs
+    let endTime = Date.now() + (config.order_check_interval * 60 * 1000) / 2;
+
     const interval = setInterval(() => {
+      if (Date.now() >= endTime) {
+        clearInterval(interval);
+        lastOrderMessageId = undefined;
+        return;
+      }
+
       alarmRelay?.writeSync(1);
 
       setTimeout(() => {
