@@ -196,7 +196,7 @@ async function getMostRecentMessage(auth: OAuth2Client) {
 }
 
 function onNewOrder() {
-  hasButtonBeenPressed = true;
+  hasButtonBeenPressed = false;
 
   if (!shouldAlarmSound()) {
     info(
