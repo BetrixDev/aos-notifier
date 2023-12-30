@@ -206,7 +206,7 @@ function onNewOrder() {
 
   if (isPi()) {
     // Stop the alarm before the next interval check occurs
-    let endTime = Date.now() + (config.order_check_interval * 60 * 1000) / 2;
+    let endTime = Date.now() + (config.order_check_interval * 60 * 1000) / 6;
 
     const interval = setInterval(() => {
       if (Date.now() >= endTime) {
