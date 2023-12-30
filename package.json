@@ -5,7 +5,7 @@
   "scripts": {
     "build": "swc ./src --out-dir build",
     "start": "node build/index.js",
-    "start:pm2": "pm2 start build/index.js --name aos-notifier",
+    "start:pm2": "pm2 start \"npm run build && npm run start\" --name aos-notifier",
     "dev": "tsx src/index.ts"
   },
   "author": "BetrixDev (Ryan)",
