@@ -26,7 +26,9 @@ cfonts.say("AOS NOTIFIER", {
 });
 
 if (isPi()) {
-  button = new Gpio(config.button_pin, "in", "rising", { debounceTimeout: 25 });
+  button = new Gpio(config.button_pin, "in", "falling", {
+    debounceTimeout: 25,
+  });
   alarmRelay = new Gpio(config.alarm_relay_pin, "out");
 } else {
   warn(
