@@ -83,7 +83,12 @@ function spawnNewCronJob(auth: OAuth2Client) {
         lastOrderMessageId = message.data.id;
 
         onNewOrder();
-      }
+      } else
+        [
+          info(
+            "An order was found in the email, but we already acknowledged it"
+          ),
+        ];
     }
   });
 }
@@ -210,6 +215,8 @@ function onNewOrder() {
       if (err) {
         error(err.message);
       }
+
+      info("Button was pushed, stopping alarm");
 
       clearInterval(interval);
     });
