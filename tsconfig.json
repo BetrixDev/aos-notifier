@@ -11,9 +11,9 @@
     "noUncheckedIndexedAccess": true,
     "moduleResolution": "NodeNext",
     "module": "NodeNext",
-    "outDir": "dist",
+    "outDir": "build",
     "sourceMap": true,
-    "noEmit": true,
+    "noEmit": false,
     "lib": ["es2022"]
   }
 }

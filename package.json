@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
     "dev": "tsx src/index.ts"
   },
   "author": "BetrixDev (Ryan)",
