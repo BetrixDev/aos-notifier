@@ -1,0 +1,14 @@
+{
+  "jsc": {
+    "target": "esnext",
+    "parser": {
+      "syntax": "typescript"
+    }
+  },
+  "module": {
+    "type": "es6",
+    "strictMode": true
+    // Add any additional module options you need
+  }
+  // Additional SWC options if required
+}

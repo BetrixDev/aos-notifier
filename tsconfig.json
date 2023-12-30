@@ -15,5 +15,6 @@
     "sourceMap": true,
     "noEmit": false,
     "lib": ["es2022"]
-  }
+  },
+  "include": ["./src/*.ts", "detect-rpi.d.ts"]
 }
