@@ -219,6 +219,7 @@ function onNewOrder() {
       info("Button was pushed, stopping alarm");
 
       clearInterval(interval);
+      button?.unwatch();
     });
   }
 }
