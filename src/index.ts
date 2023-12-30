@@ -212,9 +212,14 @@ function onNewOrder() {
     let endTime = Date.now() + (config.order_check_interval * 60 * 1000) / 6;
 
     const interval = setInterval(() => {
-      if (Date.now() >= endTime || hasButtonBeenPressed) {
+      if (Date.now() >= endTime) {
         clearInterval(interval);
         lastOrderMessageId = undefined;
+        return;
+      }
+
+      if (hasButtonBeenPressed) {
+        clearInterval(interval);
         return;
       }
 
