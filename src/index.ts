@@ -26,7 +26,7 @@ cfonts.say("AOS NOTIFIER", {
 });
 
 if (isPi()) {
-  button = new Gpio(config.button_pin, "in");
+  button = new Gpio(config.button_pin, "in", "rising", { debounceTimeout: 25 });
   alarmRelay = new Gpio(config.alarm_relay_pin, "out");
 } else {
   warn(
@@ -206,7 +206,11 @@ function onNewOrder() {
       }, config.alarm_on_duration);
     }, config.alarm_interval + config.alarm_on_duration);
 
-    button?.watch(() => {
+    button?.watch((err, value) => {
+      if (err) {
+        error(err.message);
+      }
+
       clearInterval(interval);
     });
   }
