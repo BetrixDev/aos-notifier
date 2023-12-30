@@ -14,6 +14,7 @@ import { shouldAlarmSound } from "./utils.js";
 import chokidar from "chokidar";
 
 let cronJob: ScheduledTask | undefined;
+let hasButtonBeenPressed = false;
 
 let config = parseConfig();
 
@@ -195,6 +196,8 @@ async function getMostRecentMessage(auth: OAuth2Client) {
 }
 
 function onNewOrder() {
+  hasButtonBeenPressed = true;
+
   if (!shouldAlarmSound()) {
     info(
       "A new order has been found, but it is not during the hours of operation for the store"
@@ -209,7 +212,7 @@ function onNewOrder() {
     let endTime = Date.now() + (config.order_check_interval * 60 * 1000) / 6;
 
     const interval = setInterval(() => {
-      if (Date.now() >= endTime) {
+      if (Date.now() >= endTime || hasButtonBeenPressed) {
         clearInterval(interval);
         lastOrderMessageId = undefined;
         return;
@@ -221,19 +224,17 @@ function onNewOrder() {
         alarmRelay?.writeSync(0);
       }, config.alarm_on_duration);
     }, config.alarm_interval + config.alarm_on_duration);
-
-    button?.watch((err, value) => {
-      if (err) {
-        error(err.message);
-      }
-
-      info("Button was pushed, stopping alarm");
-
-      clearInterval(interval);
-      button?.unwatch();
-    });
   }
 }
+
+button?.watch((err) => {
+  if (err) {
+    error(err.message);
+  }
+
+  hasButtonBeenPressed = true;
+  info("Button has been pressed");
+});
 
 // Cleanup function when the program shuts down
 process.on("SIGTERM", () => {
