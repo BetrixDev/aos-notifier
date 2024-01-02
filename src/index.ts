@@ -12,25 +12,34 @@ import { parseConfig } from "./configuration-parser.js";
 import isPi from "detect-rpi";
 import { shouldAlarmSound } from "./utils.js";
 import chokidar from "chokidar";
-
-let cronJob: ScheduledTask | undefined;
-let hasButtonBeenPressed = false;
-
-let config = parseConfig();
-
-let button: Gpio | undefined;
-let alarmRelay: Gpio | undefined;
+import { create } from "zustand";
 
 cfonts.say("AOS NOTIFIER", {
   font: "block",
   colors: ["red", "black"],
 });
 
+let config = parseConfig();
+
+let button: Gpio | undefined;
+let alarmRelay: Gpio | undefined;
+let cronJob: ScheduledTask | undefined;
+
+const buttonState = create<{ activated: boolean }>(() => ({
+  activated: false,
+}));
+
 if (isPi()) {
   button = new Gpio(config.button_pin, "in", "falling", {
     debounceTimeout: 25,
   });
   alarmRelay = new Gpio(config.alarm_relay_pin, "out");
+
+  button.watch((_, value) => {
+    buttonState.setState(() => ({
+      activated: value.valueOf() === 1 ? true : false,
+    }));
+  });
 } else {
   warn(
     "This program is not running on a raspberry pi, orders will still be tracked, but no alarm will be sound"
@@ -196,8 +205,6 @@ async function getMostRecentMessage(auth: OAuth2Client) {
 }
 
 function onNewOrder() {
-  hasButtonBeenPressed = false;
-
   if (!shouldAlarmSound()) {
     info(
       "A new order has been found, but it is not during the hours of operation for the store"
@@ -208,6 +215,8 @@ function onNewOrder() {
   }
 
   if (isPi()) {
+    buttonState.setState({ activated: false });
+
     // Stop the alarm before the next interval check occurs
     let endTime = Date.now() + (config.order_check_interval * 60 * 1000) / 6;
 
@@ -218,28 +227,21 @@ function onNewOrder() {
         return;
       }
 
-      if (hasButtonBeenPressed) {
-        clearInterval(interval);
-        return;
-      }
-
       alarmRelay?.writeSync(1);
 
       setTimeout(() => {
         alarmRelay?.writeSync(0);
       }, config.alarm_on_duration);
     }, config.alarm_interval + config.alarm_on_duration);
+
+    const unsubscribe = buttonState.subscribe((state) => {
+      if (state.activated) {
+        clearInterval(interval);
+        unsubscribe();
+      }
+    });
   }
 }
-
-button?.watch((err) => {
-  if (err) {
-    error(err.message);
-  }
-
-  hasButtonBeenPressed = true;
-  info("Button has been pressed");
-});
 
 // Cleanup function when the program shuts down
 process.on("SIGTERM", () => {
