@@ -9,6 +9,8 @@ export const schema = z.object({
   alarm_on_duration: z.number().min(1),
   button_pin: z.number(),
   alarm_relay_pin: z.number(),
+  alarm_burst_amount: z.number(),
+  duration_between_alarm_bursts: z.number(),
   hours_of_operation: z.object({
     sunday: z.string(),
     monday: z.string(),

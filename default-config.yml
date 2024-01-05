@@ -7,6 +7,12 @@ alarm_interval: 2000
 # How long the alarm is activated for (in milliseconds)
 alarm_on_duration: 1000
 
+# How many times the alarm is sounded before it stops for
+alarm_burst_amount: 3
+
+# How long to wait between alarm bursts (in milliseconds)
+duration_between_alarm_bursts: 7000
+
 # The pin that the button to turn off the alarm is connected to on the pi (NOT THE GROUND PIN)
 button_pin: 4
 

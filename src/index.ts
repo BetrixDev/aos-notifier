@@ -24,9 +24,10 @@ let config = parseConfig();
 let button: Gpio | undefined;
 let alarmRelay: Gpio | undefined;
 let cronJob: ScheduledTask | undefined;
+let lastOrderMessageId: string | undefined;
 
-const buttonState = create<{ activated: boolean }>(() => ({
-  activated: false,
+const orderState = create<{ acknowledged: boolean }>(() => ({
+  acknowledged: false,
 }));
 
 if (isPi()) {
@@ -36,17 +37,17 @@ if (isPi()) {
   alarmRelay = new Gpio(config.alarm_relay_pin, "out");
 
   button.watch((_, value) => {
-    buttonState.setState(() => ({
-      activated: value.valueOf() === 1 ? true : false,
-    }));
+    const isButtonActivated = value.valueOf() === 1 ? true : false;
+
+    if (isButtonActivated) {
+      orderState.setState({ acknowledged: true });
+    }
   });
 } else {
   warn(
     "This program is not running on a raspberry pi, orders will still be tracked, but no alarm will be sound"
   );
 }
-
-let lastOrderMessageId: string | undefined;
 
 async function main() {
   const auth = await authorize();
@@ -84,6 +85,10 @@ function spawnNewCronJob(auth: OAuth2Client) {
   );
 
   cronJob = schedule(`*/${checkInterval} * * * *`, async () => {
+    if (!orderState.getState().acknowledged) {
+      return;
+    }
+
     const message = await getMostRecentMessage(auth);
 
     if (message.data.snippet?.startsWith("Order Assigned")) {
@@ -94,13 +99,11 @@ function spawnNewCronJob(auth: OAuth2Client) {
       ) {
         lastOrderMessageId = message.data.id;
 
+        orderState.setState({ acknowledged: false });
         onNewOrder();
-      } else
-        [
-          info(
-            "An order was found in the email, but we already acknowledged it"
-          ),
-        ];
+      } else {
+        info("An order was found in the email, but we already acknowledged it");
+      }
     }
   });
 }
@@ -214,19 +217,12 @@ function onNewOrder() {
     info("A new order has been found, triggering alarm");
   }
 
-  if (isPi()) {
-    buttonState.setState({ activated: false });
+  if (!isPi()) {
+    return;
+  }
 
-    // Stop the alarm before the next interval check occurs
-    let endTime = Date.now() + (config.order_check_interval * 60 * 1000) / 6;
-
-    const interval = setInterval(() => {
-      if (Date.now() >= endTime) {
-        clearInterval(interval);
-        lastOrderMessageId = undefined;
-        return;
-      }
-
+  const alarmInterval = setInterval(() => {
+    const burstInterval = setInterval(() => {
       alarmRelay?.writeSync(1);
 
       setTimeout(() => {
@@ -234,13 +230,25 @@ function onNewOrder() {
       }, config.alarm_on_duration);
     }, config.alarm_interval + config.alarm_on_duration);
 
-    const unsubscribe = buttonState.subscribe((state) => {
-      if (state.activated) {
-        clearInterval(interval);
+    const unsubscribe = orderState.subscribe((state) => {
+      if (state.acknowledged) {
+        clearInterval(burstInterval);
         unsubscribe();
       }
     });
-  }
+
+    setTimeout(() => {
+      unsubscribe();
+      clearInterval(burstInterval);
+    }, config.alarm_burst_amount * (config.alarm_on_duration + config.alarm_interval));
+  }, config.duration_between_alarm_bursts + config.alarm_burst_amount * (config.alarm_on_duration + config.alarm_interval));
+
+  const unsubscribe = orderState.subscribe((state) => {
+    if (state.acknowledged) {
+      clearInterval(alarmInterval);
+      unsubscribe();
+    }
+  });
 }
 
 // Cleanup function when the program shuts down
