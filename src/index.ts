@@ -37,7 +37,7 @@ if (isPi()) {
   alarmRelay = new Gpio(config.alarm_relay_pin, "out");
 
   button.watch((_, value) => {
-    const isButtonActivated = value.valueOf() === 1 ? true : false;
+    const isButtonActivated = value === 1 ? true : false;
 
     if (isButtonActivated) {
       orderState.setState({ acknowledged: true });
