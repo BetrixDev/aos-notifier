@@ -35,9 +35,7 @@ if (isPi()) {
   alarmRelay = new Gpio(config.alarm_relay_pin, "out");
 
   button.watch((_, value) => {
-    const isButtonActivated = value === 1 ? true : false;
-
-    if (isButtonActivated) {
+    if (orderState.getState().acknowledged === false) {
       orderState.setState({ acknowledged: true });
     }
   });
@@ -85,6 +83,8 @@ function spawnNewCronJob(auth: OAuth2Client) {
   cronJob = schedule(`*/${checkInterval} * * * *`, async () => {
     if (orderState.getState().acknowledged === false) {
       return;
+    } else if (orderState.getState().acknowledged === true) {
+      orderState.setState({ acknowledged: undefined });
     }
 
     const message = await getMostRecentMessage(auth);
