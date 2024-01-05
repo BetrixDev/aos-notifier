@@ -26,9 +26,7 @@ let alarmRelay: Gpio | undefined;
 let cronJob: ScheduledTask | undefined;
 let lastOrderMessageId: string | undefined;
 
-const orderState = create<{ acknowledged: boolean }>(() => ({
-  acknowledged: false,
-}));
+const orderState = create<{ acknowledged?: boolean }>(() => ({}));
 
 if (isPi()) {
   button = new Gpio(config.button_pin, "in", "falling", {
@@ -85,7 +83,7 @@ function spawnNewCronJob(auth: OAuth2Client) {
   );
 
   cronJob = schedule(`*/${checkInterval} * * * *`, async () => {
-    if (!orderState.getState().acknowledged) {
+    if (orderState.getState().acknowledged === false) {
       return;
     }
 
